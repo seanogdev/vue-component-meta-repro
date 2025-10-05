@@ -81,8 +81,58 @@ The `ComponentProps<T>` conditional type from `vue-component-type-helpers` is no
 
 This issue does NOT occur in simple single-package projects, only in monorepo configurations.
 
-## Related Context
+## Technical Analysis
 
-- Storybook still uses vue-component-meta v2.0.0 (haven't upgraded to v3.x)
-- This affects documentation generation tools that use the programmatic API
-- The issue is specific to how v3.x uses conditional types for prop extraction
+### How vue-component-meta v3.x Works
+
+1. Creates a virtual `.meta.ts` file for each component:
+   ```typescript
+   import type { ComponentType, ComponentProps, ComponentEmit, ComponentSlots, ComponentExposed }
+     from 'vue-component-meta/lib/helpers';
+   import type * as Components from './Button.vue';
+
+   export default {} as { [K in keyof typeof Components]: ComponentMeta<typeof Components[K]>; };
+
+   interface ComponentMeta<T> {
+     type: ComponentType<T>;
+     props: ComponentProps<T>;  // ← This conditional type is not being evaluated
+     emit: ComponentEmit<T>;
+     slots: ComponentSlots<T>;
+     exposed: ComponentExposed<T>;
+   }
+   ```
+
+2. The `ComponentProps<T>` helper type:
+   ```typescript
+   // From vue-component-type-helpers
+   export type ComponentProps<T> = T extends new (...args: any) => {
+       $props: infer P;
+   } ? NonNullable<P> : T extends (props: infer P, ...args: any) => any ? P : {};
+   ```
+
+3. **The Bug**: In monorepo setups, TypeScript's type checker API returns the literal type `"ComponentProps<T>"` instead of evaluating the conditional type and extracting the actual props interface.
+
+### Why v2.x Works
+
+v2.x uses a different mechanism that directly extracts types from the TypeScript AST instead of relying on conditional type helpers. This approach works correctly in both single-package and monorepo setups.
+
+### Version Comparison
+
+- **v2.2.12**: ✅ Directly extracts types from TypeScript AST
+- **v3.1.0**: ❌ Uses `vue-component-type-helpers` conditional types (breaks in monorepos)
+
+## Impact
+
+- **Storybook** still uses vue-component-meta v2.0.0 (haven't upgraded to v3.x)
+- **Documentation generators** using the programmatic API are affected
+- **Monorepo projects** cannot upgrade to v3.x
+- **Workaround**: Stay on v2.2.12 until this is fixed
+
+## Environment
+
+- vue-component-meta: 3.1.0
+- vue-component-type-helpers: 3.1.0
+- TypeScript: 5.9.3
+- Vue: 3.5.22
+- pnpm: 10.17.1
+- Node: v24.9.0
