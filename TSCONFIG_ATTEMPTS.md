@@ -52,6 +52,34 @@ Can we fix the module resolution issue with tsconfig settings instead of patchin
 ```
 **Result**: ❌ Still fails - 0 props extracted
 
+### 5. Package.json Exports Resolution (TS 5.x features)
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true
+  }
+}
+```
+**Result**: ❌ Still fails - 0 props extracted
+
+### 6. Exact Teamwork tsconfig
+Used the exact same tsconfig structure as the working project:
+```json
+{
+  "extends": "../../tsconfig.options.json",
+  "compilerOptions": {
+    "noEmit": true
+  }
+}
+```
+Where `tsconfig.options.json` extends `@vue/tsconfig/tsconfig.dom.json` with Vue-specific settings.
+
+**Result**: ❌ Still fails - 0 props extracted
+
+This proves the issue exists even with production-tested tsconfig settings.
+
 ## Why TSConfig Can't Fix This
 
 The problem is in how TypeScript's Compiler API works, not in module resolution:
